@@ -1,0 +1,16 @@
+play_phrase:
+  name: Play phrase
+  description: Play a defined VOX phrase on a media player (e.g. Cast device).
+  fields:
+    phrase_id:
+      name: Phrase ID
+      description: The phrase identifier from configuration (e.g. leak_detected).
+      required: true
+      example: "leak_detected"
+    entity_id:
+      name: Entity
+      description: Media player entity id(s) to play on.
+      required: true
+      selector:
+        entity:
+          domain: media_player
