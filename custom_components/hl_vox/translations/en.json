@@ -21,10 +21,26 @@
       "step": {
         "init": {
           "title": "Phrases",
-          "description": "One phrase per line: phrase_id = clip1, clip2, clip3. Example: leak_detected = buzzwarn, attention, liquid, detected",
+          "description": "Choose how to manage phrases."
+        },
+        "edit_phrases_text": {
+          "title": "Edit phrases (text)",
+          "description": "One phrase per line: phrase_id = clip1, clip2, clip3. Same clip can appear multiple times.",
           "data": {
             "phrases_text": "Phrases (phrase_id = clip1, clip2, ...)"
           }
+        },
+        "add_phrase": {
+          "title": "Add phrase (picker)",
+          "description": "Enter phrase ID and clips in order, comma-separated. Same clip can appear multiple times (e.g. buzzwarn, attention, attention, liquid).",
+          "data": {
+            "phrase_id": "Phrase ID",
+            "clips": "Clips (comma-separated)"
+          }
+        },
+        "done": {
+          "title": "Done",
+          "description": "Save and exit."
         }
       }
     }

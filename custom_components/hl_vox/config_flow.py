@@ -13,7 +13,7 @@ from homeassistant.config_entries import (
     OptionsFlow,
 )
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import config_validation as cv, selector
+from homeassistant.helpers import config_validation as cv
 
 from .const import (
     CONF_AUTO_FETCH_VOX,
@@ -142,7 +142,7 @@ class HlVoxOptionsFlowHandler(OptionsFlow):
     async def async_step_add_phrase(
         self, user_input: dict | None = None
     ) -> ConfigFlowResult:
-        """Add a phrase with clip picker (dropdown of available WAVs)."""
+        """Add a phrase with clip list (comma-separated; same clip can appear multiple times)."""
         sounds_path = _default_sounds_path_from_entry(self.hass, self.config_entry)
         if not sounds_path.is_dir():
             return self.async_abort(reason="sounds_path_not_dir")
@@ -154,27 +154,17 @@ class HlVoxOptionsFlowHandler(OptionsFlow):
         if not clip_names:
             return self.async_abort(reason="no_wav_clips")
 
-        options_for_selector = [{"value": c, "label": c} for c in clip_names]
-
         if user_input is not None:
             phrase_id = (user_input.get("phrase_id") or "").strip().replace(" ", "_")
-            clips = user_input.get("clips")
-            if isinstance(clips, list):
-                pass
-            else:
-                clips = [clips] if clips else []
+            clips_raw = (user_input.get("clips") or "").strip()
+            clips = [c.strip() for c in clips_raw.split(",") if c.strip()]
             if not phrase_id or not clips:
                 return self.async_show_form(
                     step_id="add_phrase",
                     data_schema=vol.Schema(
                         {
                             vol.Required("phrase_id", default=user_input.get("phrase_id", "")): cv.string,
-                            vol.Required("clips"): selector.SelectSelector(
-                                selector.SelectSelectorConfig(
-                                    options=options_for_selector,
-                                    multiple=True,
-                                )
-                            ),
+                            vol.Required("clips", default=user_input.get("clips", "")): cv.string,
                         }
                     ),
                     errors={"base": "phrase_id_and_clips_required"},
@@ -188,16 +178,11 @@ class HlVoxOptionsFlowHandler(OptionsFlow):
             data_schema=vol.Schema(
                 {
                     vol.Required("phrase_id"): cv.string,
-                    vol.Required("clips"): selector.SelectSelector(
-                        selector.SelectSelectorConfig(
-                            options=options_for_selector,
-                            multiple=True,
-                        )
-                    ),
+                    vol.Required("clips"): cv.string,
                 }
             ),
             description_placeholders={
-                "help": "Enter a phrase ID and select one or more clips (WAV base names from the sounds directory).",
+                "available": ", ".join(clip_names[:30]) + ("..." if len(clip_names) > 30 else ""),
             },
         )
 
