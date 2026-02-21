@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from pathlib import Path
 
 import voluptuous as vol
@@ -31,14 +33,17 @@ CONFIG_SCHEMA = vol.Schema(
                 vol.Optional(
                     CONF_AUTO_FETCH_VOX, default=DEFAULT_AUTO_FETCH_VOX
                 ): cv.boolean,
-                vol.Optional(CONF_PHRASES, default={}): vol.Schema(
-                    {cv.slug: [cv.string]}
-                ),
             }
         )
     },
     extra=vol.ALLOW_EXTRA,
 )
+
+
+def _phrase_id_from_clips(clips: list[str]) -> str:
+    """Compute a stable phrase_id from a list of clip names."""
+    canonical = json.dumps(clips, sort_keys=False, separators=(",", ":"))
+    return "auto_" + hashlib.sha256(canonical.encode()).hexdigest()[:12]
 
 
 def _register_view_if_needed(hass: HomeAssistant) -> None:
@@ -60,7 +65,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     else:
         sounds_path = Path(hass.config.config_dir) / "hl_vox" / "sounds"
     auto_fetch = conf.get(CONF_AUTO_FETCH_VOX, DEFAULT_AUTO_FETCH_VOX)
-    phrases = conf.get(CONF_PHRASES) or {}
+    phrases = {}
     cache_dir = Path(hass.config.config_dir) / "hl_vox" / CACHE_DIR_NAME
     cache_dir.mkdir(parents=True, exist_ok=True)
 
@@ -100,6 +105,41 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
             {
                 vol.Required("phrase_id"): cv.string,
                 vol.Required("entity_id"): cv.comp_entity_ids,
+            }
+        ),
+    )
+
+    async def play_clips(call: ServiceCall) -> None:
+        clips = call.data.get("clips") or []
+        if not clips:
+            return
+        phrase_id = _phrase_id_from_clips(clips)
+        data = hass.data.get(DOMAIN)
+        if data is not None:
+            data.setdefault("phrases", {})[phrase_id] = list(clips)
+        entity_id = call.data["entity_id"]
+        if isinstance(entity_id, str):
+            entity_id = [entity_id]
+        media_content_id = f"media-source://{DOMAIN}/{phrase_id}"
+        await hass.services.async_call(
+            "media_player",
+            "play_media",
+            {
+                "entity_id": entity_id,
+                "media_content_id": media_content_id,
+                "media_content_type": "audio/wav",
+            },
+            blocking=True,
+        )
+
+    hass.services.async_register(
+        DOMAIN,
+        "play_clips",
+        play_clips,
+        schema=vol.Schema(
+            {
+                vol.Required("entity_id"): cv.comp_entity_ids,
+                vol.Required("clips"): [cv.string],
             }
         ),
     )
@@ -177,6 +217,41 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             {
                 vol.Required("phrase_id"): cv.string,
                 vol.Required("entity_id"): cv.comp_entity_ids,
+            }
+        ),
+    )
+
+    async def play_clips(call: ServiceCall) -> None:
+        clips = call.data.get("clips") or []
+        if not clips:
+            return
+        phrase_id = _phrase_id_from_clips(clips)
+        data = hass.data.get(DOMAIN)
+        if data is not None:
+            data.setdefault("phrases", {})[phrase_id] = list(clips)
+        entity_id = call.data["entity_id"]
+        if isinstance(entity_id, str):
+            entity_id = [entity_id]
+        media_content_id = f"media-source://{DOMAIN}/{phrase_id}"
+        await hass.services.async_call(
+            "media_player",
+            "play_media",
+            {
+                "entity_id": entity_id,
+                "media_content_id": media_content_id,
+                "media_content_type": "audio/wav",
+            },
+            blocking=True,
+        )
+
+    hass.services.async_register(
+        DOMAIN,
+        "play_clips",
+        play_clips,
+        schema=vol.Schema(
+            {
+                vol.Required("entity_id"): cv.comp_entity_ids,
+                vol.Required("clips"): [cv.string],
             }
         ),
     )

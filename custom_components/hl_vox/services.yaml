@@ -1,10 +1,10 @@
 play_phrase:
   name: Play phrase
-  description: Play a defined VOX phrase on a media player (e.g. Cast device).
+  description: Play a pre-defined VOX phrase (from the integration phrase builder) on a media player.
   fields:
     phrase_id:
       name: Phrase ID
-      description: The phrase identifier from configuration (e.g. leak_detected).
+      description: The phrase identifier from the phrase builder (e.g. leak_detected).
       required: true
       example: "leak_detected"
     entity_id:
@@ -14,3 +14,20 @@ play_phrase:
       selector:
         entity:
           domain: media_player
+
+play_clips:
+  name: Play clips
+  description: Play a sequence of VOX clips on a media player. The phrase is built from the clip list on first use and cached.
+  fields:
+    entity_id:
+      name: Entity
+      description: Media player entity id(s) to play on.
+      required: true
+      selector:
+        entity:
+          domain: media_player
+    clips:
+      name: Clips
+      description: List of clip names (WAV base names from the sounds directory), in order.
+      required: true
+      example: '["buzwarn", "attention", "all", "personnel", "anomalous", "incident", "detected", "at", "sector", "c"]'
