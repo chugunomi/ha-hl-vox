@@ -13,7 +13,7 @@ from homeassistant.config_entries import (
     OptionsFlow,
 )
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import config_validation as cv, selector
 
 from .const import (
     CONF_AUTO_FETCH_VOX,
@@ -95,13 +95,36 @@ def _default_sounds_path_from_entry(hass: HomeAssistant, entry: ConfigEntry) -> 
 class HlVoxOptionsFlowHandler(OptionsFlow):
     """Handle HL VOX options (phrase builder)."""
 
+    _INIT_OPTIONS = [
+        {"value": "edit_phrases_text", "label": "Edit phrases (text)"},
+        {"value": "add_phrase", "label": "Add phrase (picker)"},
+        {"value": "done", "label": "Done"},
+    ]
+
     async def async_step_init(
         self, user_input: dict | None = None
     ) -> ConfigFlowResult:
-        """Show menu: edit phrases (text) or add phrase (picker)."""
-        return self.async_show_menu(
+        """Show form to choose: edit phrases (text), add phrase, or done."""
+        if user_input is not None:
+            next_step = user_input.get("action")
+            if next_step == "done":
+                return self.async_create_entry(
+                    title="", data=dict(self.config_entry.options)
+                )
+            return await getattr(self, f"async_step_{next_step}")(None)
+
+        return self.async_show_form(
             step_id="init",
-            menu_options=["edit_phrases_text", "add_phrase", "done"],
+            data_schema=vol.Schema(
+                {
+                    vol.Required("action"): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=self._INIT_OPTIONS,
+                            mode=selector.SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
+                }
+            ),
         )
 
     async def async_step_done(
@@ -139,10 +162,12 @@ class HlVoxOptionsFlowHandler(OptionsFlow):
             },
         )
 
+    _MAX_CLIP_SLOTS = 20
+
     async def async_step_add_phrase(
         self, user_input: dict | None = None
     ) -> ConfigFlowResult:
-        """Add a phrase with clip list (comma-separated; same clip can appear multiple times)."""
+        """Add a phrase with clip selector; multiple clips in order, same clip allowed multiple times."""
         sounds_path = _default_sounds_path_from_entry(self.hass, self.config_entry)
         if not sounds_path.is_dir():
             return self.async_abort(reason="sounds_path_not_dir")
@@ -154,19 +179,44 @@ class HlVoxOptionsFlowHandler(OptionsFlow):
         if not clip_names:
             return self.async_abort(reason="no_wav_clips")
 
+        options_for_selector = [{"value": c, "label": c} for c in clip_names]
+
+        def _clips_from_input(data: dict) -> list[str]:
+            return [
+                data[f"clip_{i}"]
+                for i in range(1, self._MAX_CLIP_SLOTS + 1)
+                if data.get(f"clip_{i}")
+            ]
+
+        def _schema(defaults: dict | None = None) -> vol.Schema:
+            defaults = defaults or {}
+            return vol.Schema(
+                {
+                    vol.Required(
+                        "phrase_id",
+                        default=defaults.get("phrase_id", ""),
+                    ): cv.string,
+                    **{
+                        f"clip_{i}": vol.Optional(
+                            selector.SelectSelector(
+                                selector.SelectSelectorConfig(
+                                    options=options_for_selector,
+                                    mode=selector.SelectSelectorMode.DROPDOWN,
+                                )
+                            )
+                        )
+                        for i in range(1, self._MAX_CLIP_SLOTS + 1)
+                    },
+                }
+            )
+
         if user_input is not None:
             phrase_id = (user_input.get("phrase_id") or "").strip().replace(" ", "_")
-            clips_raw = (user_input.get("clips") or "").strip()
-            clips = [c.strip() for c in clips_raw.split(",") if c.strip()]
+            clips = _clips_from_input(user_input)
             if not phrase_id or not clips:
                 return self.async_show_form(
                     step_id="add_phrase",
-                    data_schema=vol.Schema(
-                        {
-                            vol.Required("phrase_id", default=user_input.get("phrase_id", "")): cv.string,
-                            vol.Required("clips", default=user_input.get("clips", "")): cv.string,
-                        }
-                    ),
+                    data_schema=_schema(user_input),
                     errors={"base": "phrase_id_and_clips_required"},
                 )
             phrases = dict(self.config_entry.options.get(CONF_PHRASES) or {})
@@ -175,15 +225,7 @@ class HlVoxOptionsFlowHandler(OptionsFlow):
 
         return self.async_show_form(
             step_id="add_phrase",
-            data_schema=vol.Schema(
-                {
-                    vol.Required("phrase_id"): cv.string,
-                    vol.Required("clips"): cv.string,
-                }
-            ),
-            description_placeholders={
-                "available": ", ".join(clip_names[:30]) + ("..." if len(clip_names) > 30 else ""),
-            },
+            data_schema=_schema(),
         )
 
 
