@@ -11,6 +11,7 @@ from homeassistant.components.media_source import (
     Unresolvable,
 )
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.network import NoURLAvailableError, get_url
 
 from .const import DOMAIN
 
@@ -90,9 +91,17 @@ class HlVoxMediaSource(MediaSource):
         phrases = config.get("phrases") or {}
         if item.identifier not in phrases:
             raise Unresolvable("Unknown phrase")
-        base = self.hass.config.internal_url or self.hass.config.external_url
-        if not base:
-            raise Unresolvable("No base URL configured")
+        try:
+            base = get_url(
+                self.hass,
+                allow_internal=True,
+                allow_external=True,
+            )
+        except NoURLAvailableError as err:
+            raise Unresolvable(
+                "No base URL configured. Set Settings → General → Network → "
+                "Internal URL, or use a manually configured URL."
+            ) from err
         base = base.rstrip("/")
         url = f"{base}/api/hl_vox/audio/{item.identifier}"
         return PlayMedia(url, "audio/wav")

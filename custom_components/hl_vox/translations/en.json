@@ -1,0 +1,32 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Half-Life VOX",
+        "description": "Optional: set a custom path for WAV files. Leave default to use auto-download from GitHub.",
+        "data": {
+          "sounds_path": "Sounds directory path",
+          "auto_fetch_vox": "Auto-download VOX sounds from GitHub if empty"
+        },
+        "data_description": {
+          "sounds_path": "Path to folder containing .wav files (e.g. /config/hl_vox/sounds)",
+          "auto_fetch_vox": "If enabled, download sound/vox from sourcesounds/hl1 when the sounds directory is empty"
+        },
+        "errors": {
+          "failed_fetch_vox": "Failed to download VOX sounds from GitHub. Check network or set a custom sounds path with pre-extracted WAV files."
+        }
+      }
+    },
+    "options": {
+      "step": {
+        "init": {
+          "title": "Phrases",
+          "description": "One phrase per line: phrase_id = clip1, clip2, clip3. Example: leak_detected = buzzwarn, attention, liquid, detected",
+          "data": {
+            "phrases_text": "Phrases (phrase_id = clip1, clip2, ...)"
+          }
+        }
+      }
+    }
+  }
+}

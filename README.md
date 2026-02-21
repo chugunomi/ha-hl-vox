@@ -18,8 +18,8 @@ hl_vox:
   # Optional: auto-download VOX from GitHub on first run (default: true)
   # auto_fetch_vox: true
   phrases:
-    leak_detected:
-      - buzzwarn
+    leak_detected_b:
+      - buzwarn
       - attention
       - liquid
       - materials
@@ -31,7 +31,7 @@ hl_vox:
       - personnel
       - check
       - area
-      - immediatly
+      - immediately
 ```
 
 On first run, if `sounds_path` is empty, the integration downloads the `sound/vox` folder from [sourcesounds/hl1](https://github.com/sourcesounds/hl1) automatically.
