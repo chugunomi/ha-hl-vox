@@ -1,7 +1,7 @@
 {
   "domain": "hl_vox",
   "name": "Half-Life VOX",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "codeowners": ["@chugunomi"],
   "documentation": "https://github.com/chugunomi/ha-hl-vox#readme",
   "issue_tracker": "https://github.com/chugunomi/ha-hl-vox/issues",

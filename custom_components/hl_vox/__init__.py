@@ -189,7 +189,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "silence_ms": DEFAULT_SILENCE_MS,
     }
 
-    entry.async_add_update_listener(_async_options_updated)
+    entry.add_update_listener(_async_options_updated)
     _register_view_if_needed(hass)
 
     async def play_phrase(call: ServiceCall) -> None:
