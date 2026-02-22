@@ -139,12 +139,10 @@ class HlVoxOptionsFlowHandler(OptionsFlow):
             },
         )
 
-    _MAX_CLIP_SLOTS = 20
-
     async def async_step_add_phrase(
         self, user_input: dict | None = None
     ) -> ConfigFlowResult:
-        """Add a phrase with clip selector; multiple clips in order, same clip allowed multiple times."""
+        """Add a phrase: phrase_id and multi-select clips (searchable; no duplicate clips in this UI)."""
         sounds_path = _default_sounds_path_from_entry(self.hass, self.config_entry)
         if not sounds_path.is_dir():
             return self.async_abort(reason="sounds_path_not_dir")
@@ -158,42 +156,27 @@ class HlVoxOptionsFlowHandler(OptionsFlow):
 
         options_for_selector = [{"value": c, "label": c} for c in clip_names]
 
-        def _clips_from_input(data: dict) -> list[str]:
-            return [
-                data[f"clip_{i}"]
-                for i in range(1, self._MAX_CLIP_SLOTS + 1)
-                if data.get(f"clip_{i}")
-            ]
-
-        def _schema(defaults: dict | None = None) -> vol.Schema:
-            defaults = defaults or {}
-            return vol.Schema(
-                {
-                    vol.Required(
-                        "phrase_id",
-                        default=defaults.get("phrase_id", ""),
-                    ): cv.string,
-                    **{
-                        f"clip_{i}": vol.Optional(
-                            selector.SelectSelector(
-                                selector.SelectSelectorConfig(
-                                    options=options_for_selector,
-                                    mode=selector.SelectSelectorMode.DROPDOWN,
-                                )
-                            )
-                        )
-                        for i in range(1, self._MAX_CLIP_SLOTS + 1)
-                    },
-                }
-            )
-
         if user_input is not None:
             phrase_id = (user_input.get("phrase_id") or "").strip().replace(" ", "_")
-            clips = _clips_from_input(user_input)
+            raw = user_input.get("clips")
+            clips = raw if isinstance(raw, list) else ([raw] if raw else [])
             if not phrase_id or not clips:
                 return self.async_show_form(
                     step_id="add_phrase",
-                    data_schema=_schema(user_input),
+                    data_schema=vol.Schema(
+                        {
+                            vol.Required(
+                                "phrase_id",
+                                default=user_input.get("phrase_id", ""),
+                            ): cv.string,
+                            vol.Required("clips"): selector.SelectSelector(
+                                selector.SelectSelectorConfig(
+                                    options=options_for_selector,
+                                    multiple=True,
+                                )
+                            ),
+                        }
+                    ),
                     errors={"base": "phrase_id_and_clips_required"},
                 )
             phrases = dict(self.config_entry.options.get(CONF_PHRASES) or {})
@@ -202,7 +185,17 @@ class HlVoxOptionsFlowHandler(OptionsFlow):
 
         return self.async_show_form(
             step_id="add_phrase",
-            data_schema=_schema(),
+            data_schema=vol.Schema(
+                {
+                    vol.Required("phrase_id"): cv.string,
+                    vol.Required("clips"): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=options_for_selector,
+                            multiple=True,
+                        )
+                    ),
+                }
+            ),
         )
 
 
