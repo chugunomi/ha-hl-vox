@@ -14,6 +14,11 @@
         },
         "errors": {
           "failed_fetch_vox": "Failed to download VOX sounds from GitHub. Check network or set a custom sounds path with pre-extracted WAV files."
+        },
+        "menu_options": {
+          "edit_phrases_text": "Edit phrases (text)",
+          "add_phrase": "Add phrase",
+          "done": "Done"
         }
       }
     }
@@ -33,10 +38,10 @@
       },
       "add_phrase": {
         "title": "Add phrase",
-        "description": "Enter phrase ID and select clips (searchable list). For duplicate clips or more control, use Edit phrases (text) or define phrases in automations with play_clips.",
+        "description": "Enter phrase ID and add clips in order. Each row is a dropdown (searchable). Same clip can be selected in multiple rows.",
         "data": {
           "phrase_id": "Phrase ID",
-          "clips": "Clips"
+          "clips": "Clips (ordered list)"
         }
       },
       "done": {
