@@ -95,36 +95,13 @@ def _default_sounds_path_from_entry(hass: HomeAssistant, entry: ConfigEntry) -> 
 class HlVoxOptionsFlowHandler(OptionsFlow):
     """Handle HL VOX options (phrase builder)."""
 
-    _INIT_OPTIONS = [
-        {"value": "edit_phrases_text", "label": "Edit phrases (text)"},
-        {"value": "add_phrase", "label": "Add phrase (picker)"},
-        {"value": "done", "label": "Done"},
-    ]
-
     async def async_step_init(
         self, user_input: dict | None = None
     ) -> ConfigFlowResult:
-        """Show form to choose: edit phrases (text), add phrase, or done."""
-        if user_input is not None:
-            next_step = user_input.get("action")
-            if next_step == "done":
-                return self.async_create_entry(
-                    title="", data=dict(self.config_entry.options)
-                )
-            return await getattr(self, f"async_step_{next_step}")(None)
-
-        return self.async_show_form(
+        """Show menu: edit phrases (text), add phrase (picker), or done."""
+        return self.async_show_menu(
             step_id="init",
-            data_schema=vol.Schema(
-                {
-                    vol.Required("action"): selector.SelectSelector(
-                        selector.SelectSelectorConfig(
-                            options=self._INIT_OPTIONS,
-                            mode=selector.SelectSelectorMode.DROPDOWN,
-                        )
-                    ),
-                }
-            ),
+            menu_options=["edit_phrases_text", "add_phrase", "done"],
         )
 
     async def async_step_done(
