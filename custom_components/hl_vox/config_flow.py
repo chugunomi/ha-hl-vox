@@ -142,7 +142,7 @@ class HlVoxOptionsFlowHandler(OptionsFlow):
     async def async_step_add_phrase(
         self, user_input: dict | None = None
     ) -> ConfigFlowResult:
-        """Add a phrase: phrase_id and list of clips (ObjectSelector with multiple; each row is a dropdown)."""
+        """Add a phrase: phrase_id and comma-separated clips. For a better UI use the Phrase Builder card."""
         sounds_path = _default_sounds_path_from_entry(self.hass, self.config_entry)
         if not sounds_path.is_dir():
             return self.async_abort(reason="sounds_path_not_dir")
@@ -154,37 +154,24 @@ class HlVoxOptionsFlowHandler(OptionsFlow):
         if not clip_names:
             return self.async_abort(reason="no_wav_clips")
 
-        # List of {clip: str}; serializable and accepts payload from ObjectSelector-style UI.
-        # (ObjectSelector(multiple=True) serializes but can raise "Expected a dictionary" on submit.)
-        _clips_schema = vol.All(
-            cv.ensure_list,
-            [vol.Schema({vol.Required("clip"): cv.string})],
-        )
-
-        def _clips_form_schema(phrase_default: str = "") -> vol.Schema:
-            return vol.Schema(
-                {
-                    vol.Required("phrase_id", default=phrase_default): cv.string,
-                    vol.Required("clips"): _clips_schema,
-                }
-            )
-
         if user_input is not None:
             phrase_id = (user_input.get("phrase_id") or "").strip().replace(" ", "_")
-            raw = user_input.get("clips")
-            if isinstance(raw, list):
-                clips = [
-                    item["clip"]
-                    for item in raw
-                    if isinstance(item, dict) and item.get("clip")
-                ]
-            else:
-                clips = []
+            clips_raw = (user_input.get("clips") or "").strip()
+            clips = [c.strip() for c in clips_raw.split(",") if c.strip()]
             if not phrase_id or not clips:
                 return self.async_show_form(
                     step_id="add_phrase",
-                    data_schema=_clips_form_schema(
-                        phrase_default=user_input.get("phrase_id", ""),
+                    data_schema=vol.Schema(
+                        {
+                            vol.Required(
+                                "phrase_id",
+                                default=user_input.get("phrase_id", ""),
+                            ): cv.string,
+                            vol.Required(
+                                "clips",
+                                default=user_input.get("clips", ""),
+                            ): cv.string,
+                        }
                     ),
                     errors={"base": "phrase_id_and_clips_required"},
                 )
@@ -194,7 +181,12 @@ class HlVoxOptionsFlowHandler(OptionsFlow):
 
         return self.async_show_form(
             step_id="add_phrase",
-            data_schema=_clips_form_schema(),
+            data_schema=vol.Schema(
+                {
+                    vol.Required("phrase_id"): cv.string,
+                    vol.Required("clips"): cv.string,
+                }
+            ),
         )
 
 

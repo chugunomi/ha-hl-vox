@@ -16,6 +16,32 @@ from .media import concat_wavs
 LOGGER = logging.getLogger(__name__)
 
 
+class HlVoxClipsView(http.HomeAssistantView):
+    """Return list of available clip names (WAV stems) for the phrase builder."""
+
+    name = "api:hl_vox:clips"
+    url = "/api/hl_vox/clips"
+    requires_auth = True
+
+    def __init__(self, hass: HomeAssistant) -> None:
+        self.hass = hass
+
+    async def get(self, request: web.Request) -> web.Response:
+        """Return JSON array of clip base names."""
+        data = self.hass.data.get(DOMAIN)
+        if not data:
+            return web.json_response({"clips": []})
+        sounds_path: Path = data.get("sounds_path")
+        if not sounds_path or not sounds_path.is_dir():
+            return web.json_response({"clips": []})
+
+        def _stems() -> list[str]:
+            return sorted({f.stem for f in sounds_path.glob("*.wav")})
+
+        clips = await self.hass.async_add_executor_job(_stems)
+        return web.json_response({"clips": clips})
+
+
 class HlVoxAudioView(http.HomeAssistantView):
     """Serve a phrase as a single WAV file; no auth so Cast can fetch the URL."""
 

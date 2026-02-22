@@ -31,3 +31,16 @@ play_clips:
       description: List of clip names (WAV base names from the sounds directory), in order.
       required: true
       example: '["buzwarn", "attention", "all", "personnel", "anomalous", "incident", "detected", "at", "sector", "c"]'
+
+set_phrase:
+  name: Set phrase
+  description: Save or update a phrase (phrase_id and ordered clips) for use with play_phrase. Used by the Phrase Builder card.
+  fields:
+    phrase_id:
+      name: Phrase ID
+      description: Unique phrase identifier.
+      required: true
+    clips:
+      name: Clips
+      description: Ordered list of clip names (WAV base names).
+      required: true

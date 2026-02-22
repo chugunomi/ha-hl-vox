@@ -8,9 +8,11 @@ from pathlib import Path
 
 import voluptuous as vol
 
+from homeassistant.components import websocket_api
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.core import CoreState, HomeAssistant, ServiceCall
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.event import async_call_later
 
 from .const import (
     CACHE_DIR_NAME,
@@ -23,6 +25,27 @@ from .const import (
 )
 from .download import ensure_vox_sounds
 from .http import HlVoxAudioView
+
+
+@websocket_api.websocket_command({"type": f"{DOMAIN}/clips"})
+@websocket_api.async_response
+async def _ws_clips(
+    hass: HomeAssistant,
+    connection: websocket_api.ActiveConnection,
+    msg: dict,
+) -> None:
+    """Return list of available clip names for the phrase builder."""
+    data = hass.data.get(DOMAIN)
+    clips: list[str] = []
+    if data:
+        sounds_path: Path = data.get("sounds_path")
+        if sounds_path and sounds_path.is_dir():
+
+            def _stems() -> list[str]:
+                return sorted({f.stem for f in sounds_path.glob("*.wav")})
+
+            clips = await hass.async_add_executor_job(_stems)
+    connection.send_result(msg["id"], {"clips": clips})
 
 
 CONFIG_SCHEMA = vol.Schema(
@@ -47,10 +70,13 @@ def _phrase_id_from_clips(clips: list[str]) -> str:
 
 
 def _register_view_if_needed(hass: HomeAssistant) -> None:
-    """Register the HTTP view once (idempotent)."""
+    """Register the HTTP views once (idempotent)."""
+    from .http import HlVoxClipsView
+
     if getattr(HlVoxAudioView, "_registered", False):
         return
     hass.http.register_view(HlVoxAudioView(hass))
+    hass.http.register_view(HlVoxClipsView(hass))
     HlVoxAudioView._registered = True
 
 
@@ -191,6 +217,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     entry.add_update_listener(_async_options_updated)
     _register_view_if_needed(hass)
+    websocket_api.async_register_command(hass, _ws_clips)
+
+    async def _register_frontend(_hass: HomeAssistant) -> None:
+        from .frontend import JSModuleRegistration
+        reg = JSModuleRegistration(_hass)
+        await reg.async_register()
+
+    if hass.state == CoreState.running:
+        await _register_frontend(hass)
+    else:
+        hass.bus.async_listen_once(
+            "homeassistant_started",
+            lambda _: hass.async_create_task(_register_frontend(hass)),
+        )
 
     async def play_phrase(call: ServiceCall) -> None:
         phrase_id = call.data["phrase_id"]
@@ -251,6 +291,33 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         schema=vol.Schema(
             {
                 vol.Required("entity_id"): cv.comp_entity_ids,
+                vol.Required("clips"): [cv.string],
+            }
+        ),
+    )
+
+    async def set_phrase(call: ServiceCall) -> None:
+        phrase_id = (call.data.get("phrase_id") or "").strip().replace(" ", "_")
+        clips = call.data.get("clips") or []
+        if not phrase_id:
+            return
+        entries = hass.config_entries.async_entries(DOMAIN)
+        if not entries:
+            return
+        entry = entries[0]
+        phrases = dict(entry.options.get(CONF_PHRASES) or {})
+        phrases[phrase_id] = list(clips)
+        await hass.config_entries.async_update_entry(
+            entry, options={**entry.options, CONF_PHRASES: phrases}
+        )
+
+    hass.services.async_register(
+        DOMAIN,
+        "set_phrase",
+        set_phrase,
+        schema=vol.Schema(
+            {
+                vol.Required("phrase_id"): cv.string,
                 vol.Required("clips"): [cv.string],
             }
         ),

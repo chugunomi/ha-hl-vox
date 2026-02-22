@@ -13,16 +13,19 @@ On first run, if a sounds path is not set, the integration uses `<config>/hl_vox
 
 ## Configuration
 
-- **Phrases** are defined in the integration’s **Configure** (phrase builder with clip picker) or by calling the `hl_vox.play_clips` service in automations with a list of clip names (built and cached on first use).
-- **Add phrase (picker)** uses a searchable multi-select (autocomplete when there are many clips). The same clip cannot be added twice in this UI; for duplicate clips use **Edit phrases (text)** (comma-separated list) or define phrases inline in automations with `play_clips`.
-- **Custom UI**: Home Assistant’s config flow does not support a single field that is both autocomplete and ordered-with-duplicates. If you need that (e.g. a dedicated phrase builder with type-ahead and “add same clip twice”), you can build a custom Lovelace card or dashboard panel that calls a backend service to save phrases (e.g. a custom `hl_vox.add_phrase` that writes to config entry options), or use the existing **Edit phrases (text)** step with a list of clip names.
+- **Phrases** are defined in the integration’s **Configure** (Edit phrases text, or Add phrase with comma-separated clips), or via the **Phrase Builder card** (recommended), or by calling `hl_vox.play_clips` in automations (built and cached on first use).
+- **Phrase Builder card** (custom frontend): Autocomplete and repeating clips. Add the card to a dashboard:
+  1. **Settings → Dashboards → Resources** → Add resource → URL: `/hl_vox/hl-vox-phrase-builder.js`, Type: **JavaScript Module** → Create.
+  2. Edit a dashboard → Add card → **Custom: Half-Life VOX Phrase Builder**. Enter a phrase ID, add clips (type to search), reorder or repeat clips, then **Save phrase**.
+- **Integration Configure**: Use **Edit phrases (text)** for comma-separated lists, or **Add phrase** (phrase ID + comma-separated clips). Same clip can appear multiple times.
 
 ## Usage
 
 - **Media source**: Use `media_content_id: media-source://hl_vox/<phrase_id>` with `media_player.play_media` (phrase_id from the phrase builder or from `play_clips`).
 - **Services**:
-  - **`hl_vox.play_phrase`** — Play a phrase defined in the phrase builder. Data: `phrase_id`, `entity_id` (media player).
-  - **`hl_vox.play_clips`** — Play a sequence of clips; the phrase is built from the list on first use and cached. Data: `entity_id` (media player), `clips` (list of WAV base names, e.g. `["buzzwarn", "attention", "liquid", "detected"]`).
+  - **`hl_vox.play_phrase`** — Play a phrase. Data: `phrase_id`, `entity_id` (media player).
+  - **`hl_vox.play_clips`** — Play a sequence of clips (built and cached on first use). Data: `entity_id`, `clips` (list of WAV base names).
+  - **`hl_vox.set_phrase`** — Save or update a phrase (used by the Phrase Builder card). Data: `phrase_id`, `clips` (list).
 
 ### Example automations
 
