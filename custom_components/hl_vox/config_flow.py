@@ -154,37 +154,18 @@ class HlVoxOptionsFlowHandler(OptionsFlow):
         if not clip_names:
             return self.async_abort(reason="no_wav_clips")
 
-        options_for_selector = [{"value": c, "label": c} for c in clip_names]
-
-        # ObjectSelector(multiple=True) can trigger "Expected a dictionary" on submit in some
-        # versions; accept list of {clip: str} as fallback so payload from frontend is valid.
-        _clips_list_schema = vol.All(
+        # List of {clip: str}; serializable and accepts payload from ObjectSelector-style UI.
+        # (ObjectSelector(multiple=True) serializes but can raise "Expected a dictionary" on submit.)
+        _clips_schema = vol.All(
             cv.ensure_list,
             [vol.Schema({vol.Required("clip"): cv.string})],
         )
-        _object_selector = selector.ObjectSelector(
-            selector.ObjectSelectorConfig(
-                multiple=True,
-                fields={
-                    "clip": {
-                        "selector": selector.SelectSelector(
-                            selector.SelectSelectorConfig(
-                                options=options_for_selector,
-                                mode=selector.SelectSelectorMode.DROPDOWN,
-                            )
-                        ),
-                        "required": True,
-                        "label": "Clip",
-                    }
-                },
-            )
-        )
 
-        def _clips_schema() -> vol.Schema:
+        def _clips_form_schema(phrase_default: str = "") -> vol.Schema:
             return vol.Schema(
                 {
-                    vol.Required("phrase_id"): cv.string,
-                    vol.Required("clips"): vol.Any(_object_selector, _clips_list_schema),
+                    vol.Required("phrase_id", default=phrase_default): cv.string,
+                    vol.Required("clips"): _clips_schema,
                 }
             )
 
@@ -200,20 +181,11 @@ class HlVoxOptionsFlowHandler(OptionsFlow):
             else:
                 clips = []
             if not phrase_id or not clips:
-                schema_with_defaults = vol.Schema(
-                    {
-                        vol.Required(
-                            "phrase_id",
-                            default=user_input.get("phrase_id", ""),
-                        ): cv.string,
-                        vol.Required("clips"): vol.Any(
-                            _object_selector, _clips_list_schema
-                        ),
-                    }
-                )
                 return self.async_show_form(
                     step_id="add_phrase",
-                    data_schema=schema_with_defaults,
+                    data_schema=_clips_form_schema(
+                        phrase_default=user_input.get("phrase_id", ""),
+                    ),
                     errors={"base": "phrase_id_and_clips_required"},
                 )
             phrases = dict(self.config_entry.options.get(CONF_PHRASES) or {})
@@ -222,7 +194,7 @@ class HlVoxOptionsFlowHandler(OptionsFlow):
 
         return self.async_show_form(
             step_id="add_phrase",
-            data_schema=_clips_schema(),
+            data_schema=_clips_form_schema(),
         )
 
 
