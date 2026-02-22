@@ -130,7 +130,7 @@ class HlVoxOptionsFlowHandler(OptionsFlow):
                     vol.Required(
                         "phrases_text",
                         default=phrases_text,
-                    ): selector.TextSelector(type=selector.TextSelectorType.TEXT, multiline=True),
+                    ): selector.TextSelector(selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT, multiline=True)),
                 }
             ),
             description_placeholders={
@@ -156,27 +156,35 @@ class HlVoxOptionsFlowHandler(OptionsFlow):
 
         options_for_selector = [{"value": c, "label": c} for c in clip_names]
 
+        # ObjectSelector(multiple=True) can trigger "Expected a dictionary" on submit in some
+        # versions; accept list of {clip: str} as fallback so payload from frontend is valid.
+        _clips_list_schema = vol.All(
+            cv.ensure_list,
+            [vol.Schema({vol.Required("clip"): cv.string})],
+        )
+        _object_selector = selector.ObjectSelector(
+            selector.ObjectSelectorConfig(
+                multiple=True,
+                fields={
+                    "clip": {
+                        "selector": selector.SelectSelector(
+                            selector.SelectSelectorConfig(
+                                options=options_for_selector,
+                                mode=selector.SelectSelectorMode.DROPDOWN,
+                            )
+                        ),
+                        "required": True,
+                        "label": "Clip",
+                    }
+                },
+            )
+        )
+
         def _clips_schema() -> vol.Schema:
             return vol.Schema(
                 {
                     vol.Required("phrase_id"): cv.string,
-                    vol.Required("clips"): selector.ObjectSelector(
-                        selector.ObjectSelectorConfig(
-                            multiple=True,
-                            fields={
-                                "clip": {
-                                    "selector": selector.SelectSelector(
-                                        selector.SelectSelectorConfig(
-                                            options=options_for_selector,
-                                            mode=selector.SelectSelectorMode.DROPDOWN,
-                                        )
-                                    ),
-                                    "required": True,
-                                    "label": "Clip",
-                                }
-                            },
-                        )
-                    ),
+                    vol.Required("clips"): vol.Any(_object_selector, _clips_list_schema),
                 }
             )
 
@@ -198,22 +206,8 @@ class HlVoxOptionsFlowHandler(OptionsFlow):
                             "phrase_id",
                             default=user_input.get("phrase_id", ""),
                         ): cv.string,
-                        vol.Required("clips"): selector.ObjectSelector(
-                            selector.ObjectSelectorConfig(
-                                multiple=True,
-                                fields={
-                                    "clip": {
-                                        "selector": selector.SelectSelector(
-                                            selector.SelectSelectorConfig(
-                                                options=options_for_selector,
-                                                mode=selector.SelectSelectorMode.DROPDOWN,
-                                            )
-                                        ),
-                                        "required": True,
-                                        "label": "Clip",
-                                    }
-                                },
-                            )
+                        vol.Required("clips"): vol.Any(
+                            _object_selector, _clips_list_schema
                         ),
                     }
                 )

@@ -29,6 +29,11 @@
         "title": "Phrases",
         "description": "Choose how to manage phrases."
       },
+      "menu_options": {
+        "edit_phrases_text": "Edit phrases (text)",
+        "add_phrase": "Add phrase",
+        "done": "Done"
+      },
       "edit_phrases_text": {
         "title": "Edit phrases (text)",
         "description": "One phrase per line: phrase_id = clip1, clip2, clip3. Same clip can appear multiple times.",
