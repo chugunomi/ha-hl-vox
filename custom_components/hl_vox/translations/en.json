@@ -27,7 +27,12 @@
     "step": {
       "init": {
         "title": "Phrases",
-        "description": "Choose how to manage phrases."
+        "description": "Choose how to manage phrases.",
+        "menu_options": {
+          "edit_phrases_text": "Edit phrases (text)",
+          "add_phrase": "Add phrase",
+          "done": "Done"
+        }
       },
       "edit_phrases_text": {
         "title": "Edit phrases (text)",

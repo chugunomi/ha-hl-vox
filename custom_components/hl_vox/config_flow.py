@@ -101,7 +101,11 @@ class HlVoxOptionsFlowHandler(OptionsFlow):
         """Show menu: edit phrases (text), add phrase (picker), or done."""
         return self.async_show_menu(
             step_id="init",
-            menu_options=["edit_phrases_text", "add_phrase", "done"],
+            menu_options={
+                "edit_phrases_text": "Edit phrases (text)",
+                "add_phrase": "Add phrase",
+                "done": "Done",
+            },
         )
 
     async def async_step_done(
@@ -160,21 +164,10 @@ class HlVoxOptionsFlowHandler(OptionsFlow):
             return vol.Schema(
                 {
                     vol.Required("phrase_id"): cv.string,
-                    vol.Required("clips"): selector.ObjectSelector(
-                        selector.ObjectSelectorConfig(
+                    vol.Required("clips"): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=options_for_selector,
                             multiple=True,
-                            fields={
-                                "clip": {
-                                    "selector": selector.SelectSelector(
-                                        selector.SelectSelectorConfig(
-                                            options=options_for_selector,
-                                            mode=selector.SelectSelectorMode.DROPDOWN,
-                                        )
-                                    ),
-                                    "required": True,
-                                    "label": "Clip",
-                                }
-                            },
                         )
                     ),
                 }
@@ -198,21 +191,10 @@ class HlVoxOptionsFlowHandler(OptionsFlow):
                             "phrase_id",
                             default=user_input.get("phrase_id", ""),
                         ): cv.string,
-                        vol.Required("clips"): selector.ObjectSelector(
-                            selector.ObjectSelectorConfig(
+                        vol.Required("clips"): selector.SelectSelector(
+                            selector.SelectSelectorConfig(
+                                options=options_for_selector,
                                 multiple=True,
-                                fields={
-                                    "clip": {
-                                        "selector": selector.SelectSelector(
-                                            selector.SelectSelectorConfig(
-                                                options=options_for_selector,
-                                                mode=selector.SelectSelectorMode.DROPDOWN,
-                                            )
-                                        ),
-                                        "required": True,
-                                        "label": "Clip",
-                                    }
-                                },
                             )
                         ),
                     }
